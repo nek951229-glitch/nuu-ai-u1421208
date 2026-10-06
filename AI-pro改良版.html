@@ -1,0 +1,829 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI報告 - 心情音樂導航系統</title>
+    <!-- FontAwesome 圖示 -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-main: #0b0f19;
+            --card-bg: #151c2c;
+            --card-border: #232d42;
+            --text-primary: #f1f5f9;
+            --text-secondary: #94a3b8;
+            --accent-pink: #ff2a5f;
+            --accent-pink-hover: #e01e4f;
+            --accent-glow: rgba(255, 42, 95, 0.25);
+            --card-active: #1d263b;
+            --accent-purple: #8b5cf6;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* 頂部 Header */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 32px;
+            background-color: rgba(21, 28, 44, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--card-border);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-logo {
+            width: 36px;
+            height: 36px;
+            background: var(--accent-pink);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 1.1rem;
+        }
+
+        .brand-text h1 {
+            font-size: 1.25rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .brand-text p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .history-btn {
+            background-color: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            color: var(--text-primary);
+            padding: 8px 16px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            transition: all 0.2s ease;
+        }
+
+        .history-btn:hover {
+            background-color: rgba(255, 255, 255, 0.1);
+            border-color: var(--text-secondary);
+        }
+
+        /* 主容器 */
+        main {
+            max-width: 1400px;
+            width: 100%;
+            margin: 0 auto;
+            padding: 24px 32px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+            flex: 1;
+        }
+
+        /* 上方雙欄網格 */
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 360px 1fr;
+            gap: 24px;
+        }
+
+        @media (max-width: 1024px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* 左側：控制卡片 */
+        .control-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .control-card h2 {
+            font-size: 1.1rem;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
+        }
+
+        .control-card h2 i {
+            color: var(--accent-pink);
+        }
+
+        .step-label {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+            margin-bottom: 10px;
+            font-weight: 500;
+        }
+
+        .mood-options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .mood-box {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            transition: all 0.2s ease;
+        }
+
+        .mood-box:hover {
+            border-color: rgba(255, 255, 255, 0.2);
+            background-color: rgba(255, 255, 255, 0.05);
+        }
+
+        .mood-box.active {
+            border: 2px solid var(--accent-pink);
+            background-color: rgba(255, 42, 95, 0.08);
+            box-shadow: 0 0 15px var(--accent-glow);
+        }
+
+        .mood-icon {
+            font-size: 1.5rem;
+            width: 32px;
+            text-align: center;
+        }
+
+        .mood-info h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            margin-bottom: 2px;
+        }
+
+        .mood-info p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        /* 下拉選單 */
+        .scene-select-wrapper select {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.04);
+            border: 1px solid var(--card-border);
+            color: var(--text-primary);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            outline: none;
+            cursor: pointer;
+            appearance: none;
+            background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+            background-repeat: no-repeat;
+            background-position: right 14px center;
+            background-size: 16px;
+        }
+
+        .scene-select-wrapper select option {
+            background-color: var(--card-bg);
+            color: var(--text-primary);
+        }
+
+        .btn-group-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin-top: 8px;
+        }
+
+        .random-btn {
+            background: linear-gradient(135deg, var(--accent-pink) 0%, #d91b4c 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px var(--accent-glow);
+            transition: all 0.2s ease;
+        }
+
+        .random-btn:hover {
+            background: linear-gradient(135deg, #ff4373 0%, var(--accent-pink) 100%);
+            transform: translateY(-2px);
+        }
+
+        .auto-yt-btn {
+            background: linear-gradient(135deg, var(--accent-purple) 0%, #6d28d9 100%);
+            color: white;
+            border: none;
+            padding: 12px;
+            border-radius: 12px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 8px;
+            box-shadow: 0 4px 15px rgba(139, 92, 246, 0.3);
+            transition: all 0.2s ease;
+        }
+
+        .auto-yt-btn:hover {
+            background: linear-gradient(135deg, #9d72ff 0%, var(--accent-purple) 100%);
+            transform: translateY(-2px);
+        }
+
+        /* 右側：播放器與標題卡片 */
+        .player-column {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .match-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 20px 24px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .match-info {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .match-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            background-color: rgba(255, 42, 95, 0.15);
+            color: var(--accent-pink);
+            font-size: 0.75rem;
+            font-weight: 700;
+            padding: 4px 10px;
+            border-radius: 6px;
+            width: fit-content;
+            letter-spacing: 0.5px;
+        }
+
+        .match-title {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .match-desc {
+            font-size: 0.85rem;
+            color: var(--text-secondary);
+        }
+
+        .genre-box {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            padding: 10px 18px;
+            border-radius: 10px;
+            text-align: right;
+        }
+
+        .genre-box span {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            display: block;
+        }
+
+        .genre-box strong {
+            font-size: 0.95rem;
+            color: var(--accent-pink);
+        }
+
+        /* YouTube 播放器區域 */
+        .player-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .iframe-container {
+            position: relative;
+            width: 100%;
+            padding-top: 52%; /* 16:9 比例 */
+            border-radius: 12px;
+            overflow: hidden;
+            background-color: #000;
+        }
+
+        .iframe-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* 底部：單曲清單 */
+        .songs-section {
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .songs-section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: var(--text-primary);
+        }
+
+        .songs-section-title i {
+            color: var(--accent-pink);
+        }
+
+        .songs-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            gap: 14px;
+        }
+
+        .song-card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 14px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .song-card:hover {
+            border-color: rgba(255, 255, 255, 0.25);
+            background-color: var(--card-active);
+            transform: translateY(-2px);
+        }
+
+        .song-card.playing {
+            border-color: var(--accent-pink);
+            background-color: rgba(255, 42, 95, 0.08);
+        }
+
+        .song-card-info h4 {
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin-bottom: 2px;
+        }
+
+        .song-card-info p {
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+        }
+
+        .play-icon-btn {
+            color: var(--accent-pink);
+            font-size: 1rem;
+        }
+
+        /* Modal 歷史紀錄 */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background-color: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.3s ease;
+        }
+
+        .modal-overlay.active {
+            opacity: 1;
+            pointer-events: auto;
+        }
+
+        .modal-content {
+            background-color: var(--card-bg);
+            border: 1px solid var(--card-border);
+            border-radius: 16px;
+            width: 90%;
+            max-width: 500px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-height: 80vh;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--card-border);
+            padding-bottom: 12px;
+        }
+
+        .close-modal {
+            background: none;
+            border: none;
+            color: var(--text-secondary);
+            font-size: 1.2rem;
+            cursor: pointer;
+        }
+
+        .history-list {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            overflow-y: auto;
+            max-height: 350px;
+        }
+
+        .history-item {
+            background-color: rgba(255, 255, 255, 0.03);
+            border: 1px solid var(--card-border);
+            border-radius: 8px;
+            padding: 10px 14px;
+            font-size: 0.85rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- 頂部 Header -->
+    <header>
+        <div class="brand">
+            <div class="brand-logo">
+                <i class="fa-solid fa-play"></i>
+            </div>
+            <div class="brand-text">
+                <h1>AI報告</h1>
+                <p>心情音樂導航系統 (AI 報告專題版)</p>
+            </div>
+        </div>
+        <button class="history-btn" onclick="toggleModal(true)">
+            <i class="fa-solid fa-rotate-left"></i> 歷史紀錄
+        </button>
+    </header>
+
+    <!-- 主內容區 -->
+    <main>
+        <div class="dashboard-grid">
+            <!-- 左側：控制面板 -->
+            <aside class="control-card">
+                <h2><i class="fa-solid fa-sliders"></i> 心境與場景設定</h2>
+
+                <!-- 1. 心情選擇 -->
+                <div>
+                    <div class="step-label">1. 選擇你目前的心情</div>
+                    <div class="mood-options">
+                        <div class="mood-box active" id="mood-happy" onclick="selectMood('happy')">
+                            <div class="mood-icon" style="color: #ff2a5f;"><i class="fa-solid fa-fire"></i></div>
+                            <div class="mood-info">
+                                <h3>開心 / 熱血 (超燃音樂特輯)</h3>
+                                <p>充滿能量、熱血節奏、活力滿滿</p>
+                            </div>
+                        </div>
+                        <div class="mood-box" id="mood-sad" onclick="selectMood('sad')">
+                            <div class="mood-icon" style="color: #38bdf8;"><i class="fa-solid fa-cloud-showers-heavy"></i></div>
+                            <div class="mood-info">
+                                <h3>悲傷 / 宣洩 (療癒抒情特輯)</h3>
+                                <p>溫柔共鳴、情感宣洩、深層療癒</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 2. 目前場景 -->
+                <div>
+                    <div class="step-label">2. 目前場景</div>
+                    <div class="scene-select-wrapper">
+                        <select id="sceneSelect" onchange="selectScene(this.value)">
+                            <option value="work">💻 ☕ 工作 / 休息 (純音樂/樂器伴奏)</option>
+                            <option value="pop">🚌 🎧 通勤 / 隨聽 (流行POP節奏)</option>
+                            <option value="sport">🏋️ ⚡ 運動 / 健身 (爆發電音搖滾)</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- 按鈕區：包含切換固定曲庫與 YouTube 自動隨機 -->
+                <div class="btn-group-vertical">
+                    <button class="random-btn" onclick="randomizeTracks()">
+                        <i class="fa-solid fa-shuffle"></i> 切換清單固定歌曲
+                    </button>
+                    <button class="auto-yt-btn" onclick="fetchAutoYouTubeRandom()">
+                        <i class="fa-solid fa-bolt"></i> 🎲 YouTube 雷達自動隨機
+                    </button>
+                </div>
+            </aside>
+
+            <!-- 右側：播放器區域 -->
+            <section class="player-column">
+                <!-- 導航匹配卡片 -->
+                <div class="match-card">
+                    <div class="match-info">
+                        <div class="match-badge">
+                            <i class="fa-solid fa-compass"></i> MOOD & SCENARIO MATCHER
+                        </div>
+                        <div class="match-title" id="matchTitle">載入中...</div>
+                        <div class="match-desc" id="matchDesc">載入中...</div>
+                    </div>
+                    <div class="genre-box">
+                        <span>建議曲風</span>
+                        <strong id="genreText">-</strong>
+                    </div>
+                </div>
+
+                <!-- YouTube 播放卡片 -->
+                <div class="player-card">
+                    <div class="iframe-container">
+                        <iframe id="ytIframe" src="https://www.youtube.com/embed/b5d5OmmUlPc" title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+                    </div>
+                </div>
+            </section>
+        </div>
+
+        <!-- 底部：場景專屬單曲清單 -->
+        <section class="songs-section">
+            <div class="songs-section-title">
+                <i class="fa-solid fa-list-ul"></i> 場景專屬單曲 (點擊下方卡片切換)
+            </div>
+            <div class="songs-grid" id="songsGrid">
+                <!-- 動態生成歌曲卡片 -->
+            </div>
+        </section>
+    </main>
+
+    <!-- 歷史紀錄 Modal -->
+    <div class="modal-overlay" id="historyModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3><i class="fa-solid fa-clock-rotate-left"></i> 歷史播放紀錄</h3>
+                <button class="close-modal" onclick="toggleModal(false)"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="history-list" id="historyList"></div>
+        </div>
+    </div>
+
+    <script>
+        // 各分類延伸的 YouTube 動態隨機庫
+        const autoYTRadar = {
+            happy: {
+                work: ["5qap5aO4i9A", "DWcJFNfaw9c", "1fueZCTYkpA", "TURbeEIw03E"],
+                pop: ["gdZLi9oWNZg", "09R8_2nJtjg", "OPf0YbXqDm0", "bM7SZ5SBzyY"],
+                sport: ["fJ9rUzIMcZQ", "2S24-y0Ij3Y", "J2X5mJ3HDYE", "3nQNiWdeH2Q"]
+            },
+            sad: {
+                work: ["77ZozI0rw7w", "C39x79i4P30", "hLQl3WQQoQ0"],
+                pop: ["hLQl3WQQoQ0", "4NRXx6U8ABQ", "zABLecsR5UE"],
+                sport: ["eVTXPUF4Oz4", "3YxaaGgTQYM", "ktvTqknDobU"]
+            }
+        };
+
+        const playlistData = {
+            happy: {
+                work: {
+                    title: "開心/熱血工作 經典純音樂與熱血伴奏",
+                    desc: "超燃的純樂器演奏與熱血旋律，無人聲干擾，帶來滿滿專注力與工作衝勁！",
+                    genre: "High Energy Piano",
+                    songs: [
+                        { title: "工作熱血純音樂 01", artist: "YouTube Music 01", id: "b5d5OmmUlPc" },
+                        { title: "工作熱血純音樂 02", artist: "YouTube Music 02", id: "G5H-0hVyX48" },
+                        { title: "工作熱血純音樂 03", artist: "YouTube Music 03", id: "LOFNQH8egc4" },
+                        { title: "工作熱血純音樂 04", artist: "YouTube Music 04", id: "MxPdn6jJMMQ" }
+                    ]
+                },
+                pop: {
+                    title: "開心熱血通勤 暢銷流行 POP 歡樂歌曲",
+                    desc: "輕快亮麗的 POP 節奏與熱門暢銷曲，陪伴你的每一步通勤時光。",
+                    genre: "Upbeat POP",
+                    songs: [
+                        { title: "開心通勤流行曲 01", artist: "Happy Pop 01", id: "y5wkebBCwAE" },
+                        { title: "開心通勤流行曲 02", artist: "Happy Pop 02", id: "d1BG-5F9wo8" },
+                        { title: "開心通勤流行曲 03", artist: "Happy Pop 03", id: "XQPBf64jW9E" },
+                        { title: "開心通勤流行曲 04", artist: "Happy Pop 04", id: "NyUTYwZe_l4" }
+                    ]
+                },
+                sport: {
+                    title: "開心熱血運動 爆發力高能電音搖滾",
+                    desc: "充滿節奏重拍與熱血電音，注入滿滿動能，運動爆發力瞬間拉滿！",
+                    genre: "High Energy EDM",
+                    songs: [
+                        { title: "開心運動爆發曲 01", artist: "EDM Energy 01", id: "zI_IaCD-j34" },
+                        { title: "開心運動爆發曲 02", artist: "EDM Energy 02", id: "PQHZpTJm-vw" },
+                        { title: "開心運動爆發曲 03", artist: "EDM Energy 03", id: "JGwWNGJdvx8" },
+                        { title: "開心運動爆發曲 04", artist: "EDM Energy 04", id: "C8LYFb0SXgk" }
+                    ]
+                }
+            },
+            sad: {
+                work: {
+                    title: "悲傷宣洩工作 沉靜療癒純音樂",
+                    desc: "深情共鳴的琴聲與療癒純音樂，給心靈一個沉澱思緒的避風港。",
+                    genre: "Sad Healing Piano",
+                    songs: [
+                        { title: "悲傷療癒純音樂 01", artist: "Sad Instrumental 01", id: "rEgwNB07EBQ" },
+                        { title: "悲傷療癒純音樂 02", artist: "Sad Instrumental 02", id: "CbGRd8O4jnM" },
+                        { title: "悲傷療癒純音樂 03", artist: "Sad Instrumental 03", id: "6PlqNnsW-II" }
+                    ]
+                },
+                pop: {
+                    title: "悲傷宣洩通勤 EMO 抒情歌曲",
+                    desc: "深情共鳴的抒情流行歌曲，隨歌詞傾倒所有情緒。",
+                    genre: "EMO Pop Ballads",
+                    songs: [
+                        { title: "悲傷通勤抒情曲 01", artist: "EMO Song 01", id: "N5HxbW_OcJI" },
+                        { title: "悲傷通勤抒情曲 02", artist: "EMO Song 02", id: "SX_ViT4Ra7k" },
+                        { title: "悲傷通勤抒情曲 03", artist: "EMO Song 03", id: "KRKkULldM1w" }
+                    ]
+                },
+                sport: {
+                    title: "悲傷宣洩運動 發洩系宣洩搖滾",
+                    desc: "用汗水與重拍搖滾，揮灑並釋放所有的悲傷與負面壓力。",
+                    genre: "EMO Heavy Rock",
+                    songs: [
+                        { title: "悲傷運動宣洩曲 01", artist: "Sad Rock 01", id: "rYEDA3JcQqw" },
+                        { title: "悲傷運動宣洩曲 02", artist: "Sad Rock 02", id: "3q2IXr6fjh0" },
+                        { title: "悲傷運動宣洩曲 03", artist: "Sad Rock 03", id: "3AtDnEC4zak" }
+                    ]
+                }
+            }
+        };
+
+        let currentMood = 'happy';
+        let currentScene = 'work';
+        let currentSongIndex = 0;
+        let playHistory = JSON.parse(localStorage.getItem('moodify_history')) || [];
+
+        window.onload = function() {
+            updateView();
+        };
+
+        function selectMood(mood) {
+            currentMood = mood;
+            document.getElementById('mood-happy').classList.toggle('active', mood === 'happy');
+            document.getElementById('mood-sad').classList.toggle('active', mood === 'sad');
+            currentSongIndex = 0;
+            updateView();
+        }
+
+        function selectScene(scene) {
+            currentScene = scene;
+            currentSongIndex = 0;
+            updateView();
+        }
+
+        function randomizeTracks() {
+            const songs = playlistData[currentMood][currentScene].songs;
+            currentSongIndex = Math.floor(Math.random() * songs.length);
+            updateView();
+        }
+
+        // 🎲 YouTube 雷達自動隨機功能
+        function fetchAutoYouTubeRandom() {
+            const pool = autoYTRadar[currentMood][currentScene];
+            const randomId = pool[Math.floor(Math.random() * pool.length)];
+            const data = playlistData[currentMood][currentScene];
+
+            document.getElementById('matchTitle').innerText = `${data.title} (🎲 YouTube 雷達動態推薦)`;
+            document.getElementById('matchDesc').innerText = "已為您隨機配對當前心境與場景熱門 YouTube 音樂串流。";
+            
+            const embedUrl = `https://www.youtube.com/embed/${randomId}`;
+            document.getElementById('ytIframe').src = embedUrl;
+
+            addToHistory(`🎲 YouTube 動態隨機曲目 (${randomId})`, data.genre);
+        }
+
+        function playSong(index) {
+            currentSongIndex = index;
+            updateView();
+        }
+
+        function updateView() {
+            const data = playlistData[currentMood][currentScene];
+            const currentSong = data.songs[currentSongIndex];
+
+            // 更新頁面文字
+            document.getElementById('matchTitle').innerText = data.title;
+            document.getElementById('matchDesc').innerText = data.desc;
+            document.getElementById('genreText').innerText = data.genre;
+
+            // 切換包含原生跨域參數的嵌入連結
+            const embedUrl = `https://www.youtube.com/embed/${currentSong.id}`;
+            document.getElementById('ytIframe').src = embedUrl;
+
+            // 渲染底部單曲卡片
+            const grid = document.getElementById('songsGrid');
+            grid.innerHTML = '';
+            data.songs.forEach((song, idx) => {
+                const isPlaying = idx === currentSongIndex;
+                const card = document.createElement('div');
+                card.className = `song-card ${isPlaying ? 'playing' : ''}`;
+                card.onclick = () => playSong(idx);
+                card.innerHTML = `
+                    <div class="song-card-info">
+                        <h4>${song.title}</h4>
+                        <p>${song.artist}</p>
+                    </div>
+                    <div class="play-icon-btn">
+                        <i class="fa-brands fa-youtube"></i>
+                    </div>
+                `;
+                grid.appendChild(card);
+            });
+
+            addToHistory(currentSong.title, data.genre);
+        }
+
+        function addToHistory(title, genre) {
+            const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+            playHistory.unshift({ title, genre, time });
+            if (playHistory.length > 10) playHistory.pop();
+            localStorage.setItem('moodify_history', JSON.stringify(playHistory));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const list = document.getElementById('historyList');
+            list.innerHTML = '';
+            if (playHistory.length === 0) {
+                list.innerHTML = '<p style="font-size:0.85rem; color:#94a3b8;">暫無歷史紀錄</p>';
+                return;
+            }
+            playHistory.forEach(item => {
+                const el = document.createElement('div');
+                el.className = 'history-item';
+                el.innerHTML = `
+                    <div>
+                        <strong>${item.title}</strong>
+                        <div style="font-size:0.75rem; color:#94a3b8;">${item.genre}</div>
+                    </div>
+                    <span style="font-size:0.75rem; color:#94a3b8;">${item.time}</span>
+                `;
+                list.appendChild(el);
+            });
+        }
+
+        function toggleModal(show) {
+            document.getElementById('historyModal').classList.toggle('active', show);
+        }
+    </script>
+</body>
+</html>
